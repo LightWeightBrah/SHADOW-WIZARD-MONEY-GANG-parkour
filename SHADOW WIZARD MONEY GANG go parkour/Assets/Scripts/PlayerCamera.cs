@@ -4,8 +4,7 @@ using UnityEngine;
 
 public class PlayerCamera : MonoBehaviour
 {
-    [SerializeField] private float sensitivityX;
-    [SerializeField] private float sensitivityY;
+    [SerializeField] private float sensitivity;
 
     [SerializeField] private Transform playerOrientation;
 
@@ -21,14 +20,18 @@ public class PlayerCamera : MonoBehaviour
     private void Update()
     {
         //get mouse input
-        float mouseX = Input.GetAxisRaw("Mouse X") * sensitivityX * Time.deltaTime;
-        float mouseY = Input.GetAxisRaw("Mouse Y") * sensitivityY * Time.deltaTime;
+        float mouseX = Input.GetAxisRaw("Mouse X") * sensitivity * 0.01f;// * Time.deltaTime;
+        float mouseY = Input.GetAxisRaw("Mouse Y") * sensitivity * 0.01f;// * Time.deltaTime;
 
         cameraRotationY += mouseX;
         cameraRotationX -= mouseY;
 
         cameraRotationX = Mathf.Clamp(cameraRotationX, -90f, 90f);
+    }
 
+
+    private void LateUpdate()
+    {
         //rotate camera and orientation
         transform.rotation = Quaternion.Euler(cameraRotationX, cameraRotationY, 0);
         playerOrientation.rotation = Quaternion.Euler(0, cameraRotationY, 0);

@@ -1,14 +1,22 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.NetworkInformation;
 using UnityEditor.Experimental.Rendering;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
+
     [Header("Movement")]
     [SerializeField] private float walkingSpeed;
     [SerializeField] private float sprintngSpeed;
+    [SerializeField] private float slideSpeed;
+    [SerializeField] private float speedIncreaseMultiplier;
+    [SerializeField] private float slopeIncreaseMultiplier;
+
     private float moveSpeed;
+    private float desiredMoveSpeed;
+    private float lastDesiredMoveSpeed;
 
     [SerializeField] private float groundDrag;
 
@@ -33,11 +41,17 @@ public class PlayerMovement : MonoBehaviour
     private RaycastHit slopeHit;
     private bool tryingToExitSlope;
 
+    [Header("Input")]
+    [SerializeField] private KeyCode jumpKey = KeyCode.Space;
+    [SerializeField] private KeyCode sprintKey = KeyCode.LeftShift;
+    [SerializeField] private KeyCode crouchKey = KeyCode.C;
+    
     [SerializeField] private Transform orientation;
 
     private float horizontalInput;
     private float verticalInput;
 
+    public bool sliding;
     private Vector3 moveDirection;
     private Rigidbody rigidbody;
 
@@ -47,6 +61,7 @@ public class PlayerMovement : MonoBehaviour
         WALKING,
         SPRINTING,
         CROUCHING,
+        SLIDING,
         AIR
     }
 
@@ -84,7 +99,7 @@ public class PlayerMovement : MonoBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
 
-        if(Input.GetKey(KeyCode.Space) && readyToJump && grounded)
+        if(Input.GetKey(jumpKey) && readyToJump && grounded)
         {
             readyToJump = false;
             Jump();
@@ -92,14 +107,14 @@ public class PlayerMovement : MonoBehaviour
         }
 
         //start crouching
-        if(Input.GetKeyDown(KeyCode.LeftControl))
+        if(Input.GetKeyDown(crouchKey))
         {
             transform.localScale = new Vector3(transform.localScale.x, crouchingYScale, transform.localScale.z);
             rigidbody.AddForce(Vector3.down * 5f, ForceMode.Impulse);
         }
 
         //stop crouching
-        if(Input.GetKeyUp(KeyCode.LeftControl))
+        if(Input.GetKeyUp(crouchKey))
         {
             transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
 
@@ -108,25 +123,81 @@ public class PlayerMovement : MonoBehaviour
 
     private void StateHandler()
     {
-        if(Input.GetKey(KeyCode.LeftControl))
+        if(sliding)
+        {
+            state = MovementState.SLIDING;
+
+            if(OnSlope() && rigidbody.velocity.y < 0.1f)
+            {
+                desiredMoveSpeed = slideSpeed;
+            }
+            else
+            {
+                desiredMoveSpeed = sprintngSpeed;
+            }
+        }
+        else if(Input.GetKey(crouchKey))
         {
             state = MovementState.CROUCHING;
-            moveSpeed = crouchingSpeed;
+            desiredMoveSpeed = crouchingSpeed;
         }
-        else if(grounded && Input.GetKey(KeyCode.LeftShift))
+        else if(grounded && Input.GetKey(sprintKey))
         {
             state = MovementState.SPRINTING;
-            moveSpeed = sprintngSpeed;
+            desiredMoveSpeed = sprintngSpeed;
         }
         else if(grounded)
         {
             state = MovementState.WALKING;
-            moveSpeed = walkingSpeed;
+            desiredMoveSpeed = walkingSpeed;
         }
         else //in air
         {
             state = MovementState.AIR;
         }
+
+        //check if desiredMoveSpeed has changed drastically
+        float drasticValue = sprintngSpeed - walkingSpeed + 1.0f;
+        if(Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > drasticValue && moveSpeed != 0)
+        {
+            StopAllCoroutines();
+            StartCoroutine(SmoothlyLerpMoveSpeed());
+        }
+        else
+        {
+            moveSpeed = desiredMoveSpeed;
+        }
+
+        lastDesiredMoveSpeed = desiredMoveSpeed;
+    }
+
+    private IEnumerator SmoothlyLerpMoveSpeed()
+    {
+        //smoothly lerp movement speed to desired value
+        float time = 0;
+        float difference = Mathf.Abs(desiredMoveSpeed - moveSpeed);
+        float startValue = moveSpeed;
+
+        while(time < difference)
+        {
+            moveSpeed = Mathf.Lerp(startValue, desiredMoveSpeed, time / difference);
+
+            if(OnSlope())
+            {
+                float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
+                float slopeAngleIncrease = 1 + (slopeAngle / 90.0f);
+
+                time += Time.deltaTime * speedIncreaseMultiplier * slopeIncreaseMultiplier * slopeAngleIncrease;
+            }
+            else
+            {
+                time += Time.deltaTime * speedIncreaseMultiplier;
+            }
+
+            yield return null;
+        }
+
+        moveSpeed = desiredMoveSpeed;
     }
 
     private void MovePlayer()
@@ -136,7 +207,7 @@ public class PlayerMovement : MonoBehaviour
 
         if(OnSlope() && !tryingToExitSlope) //on slope
         {
-            rigidbody.AddForce(GetSlopeMoveDirection() * moveSpeed * 20.0f, ForceMode.Force);
+            rigidbody.AddForce(GetSlopeMoveDirection(moveDirection) * moveSpeed * 20.0f, ForceMode.Force);
 
             if (rigidbody.velocity.y > 0)
                 rigidbody.AddForce(Vector3.down * 80.0f, ForceMode.Force);
@@ -188,7 +259,7 @@ public class PlayerMovement : MonoBehaviour
         tryingToExitSlope = false;
     }
 
-    private bool OnSlope()
+    public bool OnSlope()
     {
         if(Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.3f))
         {
@@ -200,9 +271,9 @@ public class PlayerMovement : MonoBehaviour
         return false;
     }
 
-    private Vector3 GetSlopeMoveDirection()
+    public Vector3 GetSlopeMoveDirection(Vector3 direction)
     {
-        return Vector3.ProjectOnPlane(moveDirection, slopeHit.normal).normalized;
+        return Vector3.ProjectOnPlane(direction, slopeHit.normal).normalized;
         //since its direction also normalize it
     }
 }
