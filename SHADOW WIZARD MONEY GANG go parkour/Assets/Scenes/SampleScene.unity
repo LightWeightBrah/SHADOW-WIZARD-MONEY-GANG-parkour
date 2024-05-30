@@ -19317,6 +19317,7 @@ GameObject:
   - component: {fileID: 1660327554}
   - component: {fileID: 1660327555}
   - component: {fileID: 1660327556}
+  - component: {fileID: 1660327557}
   - component: {fileID: 1660327552}
   m_Layer: 0
   m_Name: Player
@@ -19386,8 +19387,9 @@ MonoBehaviour:
   sprintngSpeed: 25
   slideSpeed: 60
   speedIncreaseMultiplier: 1.5
-  slopeIncreaseMultiplier: 2.5
+  slopeIncreaseMultiplier: 3
   wallRunSpeed: 20
+  climbSpeed: 5
   groundDrag: 7
   jumpForce: 16
   jumpCooldown: 0.25
@@ -19398,13 +19400,16 @@ MonoBehaviour:
   whatIsGround:
     serializedVersion: 2
     m_Bits: 64
+  grounded: 0
   maxSlopeAngle: 60
   jumpKey: 32
   sprintKey: 304
   crouchKey: 99
   orientation: {fileID: 1187375035}
+  climbingScript: {fileID: 1660327557}
   sliding: 0
   wallRunning: 0
+  climbing: 0
   state: 0
 --- !u!114 &1660327555
 MonoBehaviour:
@@ -19460,6 +19465,36 @@ MonoBehaviour:
   cameraTilt: 15
   cameraStartFov: 80
   cameraEndFov: 100
+--- !u!114 &1660327557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1660327551}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49c01ef81829e054d8b4a02b6051dcf6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerMovement: {fileID: 1660327554}
+  orientation: {fileID: 1187375035}
+  rigidbody: {fileID: 1660327552}
+  whatIsWall:
+    serializedVersion: 2
+    m_Bits: 192
+  climbSpeed: 10
+  maxClimbTime: 0.75
+  jumpKey: 32
+  climbJumpUpForce: 14
+  climbJumpBackForce: 12
+  climbJumps: 1
+  detectionLength: 0.7
+  sphereCastRadius: 0.25
+  maxWallLookAngle: 30
+  minWallNomalAngleChange: 5
+  exitingWall: 0
+  exitWallTime: 0.2
 --- !u!1 &1695281972
 GameObject:
   m_ObjectHideFlags: 0

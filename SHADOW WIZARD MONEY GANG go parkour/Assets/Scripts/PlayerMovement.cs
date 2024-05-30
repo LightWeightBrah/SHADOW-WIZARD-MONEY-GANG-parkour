@@ -14,6 +14,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float speedIncreaseMultiplier;
     [SerializeField] private float slopeIncreaseMultiplier;
     [SerializeField] private float wallRunSpeed;
+    [SerializeField] private float climbSpeed;
 
     private float moveSpeed;
     private float desiredMoveSpeed;
@@ -35,7 +36,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("GroundCheck")]
     [SerializeField] private float playerHeight;
     [SerializeField] private LayerMask whatIsGround;
-    private bool grounded;
+    public bool grounded;
 
     [Header("Slope Handling")]
     [SerializeField] private float maxSlopeAngle;
@@ -48,21 +49,27 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private KeyCode crouchKey = KeyCode.C;
     
     [SerializeField] private Transform orientation;
+    [SerializeField] private Climbing climbingScript;
 
     private float horizontalInput;
     private float verticalInput;
 
     public bool sliding;
     public bool wallRunning;
+    public bool climbing;
+
     private Vector3 moveDirection;
     private Rigidbody rigidbody;
 
     [SerializeField] private MovementState state;
+    private MovementState previousState;
+
     private enum MovementState
     {
         WALKING,
         SPRINTING,
         WALLRUNNING,
+        CLIMBING,
         CROUCHING,
         SLIDING,
         AIR
@@ -126,7 +133,12 @@ public class PlayerMovement : MonoBehaviour
 
     private void StateHandler()
     {
-        if(wallRunning)
+        if(climbing)
+        {
+            state = MovementState.CLIMBING;
+            desiredMoveSpeed = climbSpeed;
+        }
+        else if(wallRunning)
         {
             state = MovementState.WALLRUNNING;
             desiredMoveSpeed = wallRunSpeed;
@@ -166,7 +178,9 @@ public class PlayerMovement : MonoBehaviour
 
         //check if desiredMoveSpeed has changed drastically
         float drasticValue = sprintngSpeed - walkingSpeed + 1.0f;
-        if(Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > drasticValue && moveSpeed != 0)
+        if(Mathf.Abs(desiredMoveSpeed - lastDesiredMoveSpeed) > drasticValue && 
+            (previousState != MovementState.CLIMBING  && previousState != MovementState.CROUCHING) &&
+            moveSpeed != 0)
         {
             StopAllCoroutines();
             StartCoroutine(SmoothlyLerpMoveSpeed());
@@ -177,6 +191,10 @@ public class PlayerMovement : MonoBehaviour
         }
 
         lastDesiredMoveSpeed = desiredMoveSpeed;
+
+        //dont lerp speed when going from lowerSpeed to to higher speed
+        if(state != MovementState.AIR)
+            previousState = state;
     }
 
     private IEnumerator SmoothlyLerpMoveSpeed()
@@ -210,6 +228,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void MovePlayer()
     {
+        if (climbingScript.exitingWall)
+            return;
+
         //calculate movement direction
         moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
