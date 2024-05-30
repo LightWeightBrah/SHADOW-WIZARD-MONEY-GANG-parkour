@@ -13,6 +13,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float slideSpeed;
     [SerializeField] private float speedIncreaseMultiplier;
     [SerializeField] private float slopeIncreaseMultiplier;
+    [SerializeField] private float wallRunSpeed;
 
     private float moveSpeed;
     private float desiredMoveSpeed;
@@ -52,6 +53,7 @@ public class PlayerMovement : MonoBehaviour
     private float verticalInput;
 
     public bool sliding;
+    public bool wallRunning;
     private Vector3 moveDirection;
     private Rigidbody rigidbody;
 
@@ -60,6 +62,7 @@ public class PlayerMovement : MonoBehaviour
     {
         WALKING,
         SPRINTING,
+        WALLRUNNING,
         CROUCHING,
         SLIDING,
         AIR
@@ -123,7 +126,12 @@ public class PlayerMovement : MonoBehaviour
 
     private void StateHandler()
     {
-        if(sliding)
+        if(wallRunning)
+        {
+            state = MovementState.WALLRUNNING;
+            desiredMoveSpeed = wallRunSpeed;
+        }
+        else if(sliding)
         {
             state = MovementState.SLIDING;
 
