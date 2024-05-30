@@ -226,7 +226,8 @@ public class PlayerMovement : MonoBehaviour
             rigidbody.AddForce(moveDirection.normalized * moveSpeed * airMultiplier * 10.0f, ForceMode.Force);
 
         //turn off gravity while on slope
-        rigidbody.useGravity = !OnSlope();
+        if(!wallRunning)
+            rigidbody.useGravity = !OnSlope();
     }
 
     private void SpeedControl()

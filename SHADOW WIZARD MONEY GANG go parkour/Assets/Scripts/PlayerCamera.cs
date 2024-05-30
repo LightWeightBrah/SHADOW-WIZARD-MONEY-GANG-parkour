@@ -1,12 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening;
 
 public class PlayerCamera : MonoBehaviour
 {
     [SerializeField] private float sensitivity;
 
     [SerializeField] private Transform playerOrientation;
+    [SerializeField] private Transform cameraHolder;
 
     private float cameraRotationX;
     private float cameraRotationY;
@@ -33,9 +35,18 @@ public class PlayerCamera : MonoBehaviour
     private void LateUpdate()
     {
         //rotate camera and orientation
-        transform.rotation = Quaternion.Euler(cameraRotationX, cameraRotationY, 0);
+        cameraHolder.rotation = Quaternion.Euler(cameraRotationX, cameraRotationY, 0);
         playerOrientation.rotation = Quaternion.Euler(0, cameraRotationY, 0);
     }
 
+    public void DoFov(float endValue)
+    {
+        GetComponent<Camera>().DOFieldOfView(endValue, 0.25f);
+    }
+
+    public void DoTilt(float zTilt)
+    {
+        transform.DOLocalRotate(new Vector3(0, 0, zTilt), 0.25f);
+    }
 
 }

@@ -8,12 +8,15 @@ public class WallRunning : MonoBehaviour
     [SerializeField] private LayerMask whatIsWall;
     [SerializeField] private LayerMask whatIsGround;
     [SerializeField] private float wallRunForce;
+    [SerializeField] private float wallJumpUpForce;
+    [SerializeField] private float wallJumpSideForce;
     [SerializeField] private float wallClimbSpeed;
     [SerializeField] private float maxWallRunTime;
 
     private float wallRunTimer;
 
     [Header("Input")]
+    [SerializeField] private KeyCode jumpKey = KeyCode.Space;
     [SerializeField] private KeyCode upwardsRunKey = KeyCode.LeftShift;
     [SerializeField] private KeyCode downwardsRunKey = KeyCode.LeftControl;
 
@@ -31,11 +34,27 @@ public class WallRunning : MonoBehaviour
     private bool wallLeft;
     private bool wallRight;
 
+    [Header("Exiting")]
+    [SerializeField] private float exitWallTime;
+
+    private float exitWallCounter;
+    private bool exitingWall;
+
+    [Header("Gravity")]
+    [SerializeField] private bool useGravityOnWallRunning;
+    [SerializeField] private float gravityCounterForce;
+
     [Header("References")]
     [SerializeField] private Transform orientation;
+    [SerializeField] private PlayerCamera playerCamera;
 
     private PlayerMovement playerMovement;
     private Rigidbody rigidbody;
+
+    [Header("Camera effects")]
+    [SerializeField] private float cameraTilt;
+    [SerializeField] private float cameraStartFov;
+    [SerializeField] private float cameraEndFov;
 
     private void Start()
     {
@@ -75,11 +94,26 @@ public class WallRunning : MonoBehaviour
         downwardsRunning = Input.GetKey(downwardsRunKey);
 
         //State wallrunning
-        if((wallLeft || wallRight) && verticalInput > 0 && AboveGround())
+        if((wallLeft || wallRight) && verticalInput > 0 && AboveGround() && !exitingWall)
         {
             //start wallrun
             if (!playerMovement.wallRunning)
                 StartWallRun();
+
+            //wall jump
+            if (Input.GetKeyDown(jumpKey))
+                WallJump();
+        }
+        else if(exitingWall)
+        {
+            if (playerMovement.wallRunning)
+                StopWallRun();
+
+            if (exitWallCounter > 0)
+                exitWallCounter -= Time.deltaTime;
+
+            if (exitWallCounter <= 0)
+                exitingWall = false;
         }
         else
         {
@@ -91,12 +125,19 @@ public class WallRunning : MonoBehaviour
     private void StartWallRun()
     {
         playerMovement.wallRunning = true;
+        rigidbody.velocity = new Vector3(rigidbody.velocity.x, 0f, rigidbody.velocity.z);
+
+        //camera effects
+        playerCamera.DoFov(cameraEndFov);
+        if (wallLeft)
+            playerCamera.DoTilt(-cameraTilt);
+        if (wallRight)
+            playerCamera.DoTilt(cameraTilt);
     }
 
     private void WallRunningMovement()
     {
-        rigidbody.useGravity = false;
-        rigidbody.velocity = new Vector3(rigidbody.velocity.x, 0f, rigidbody.velocity.z);
+        rigidbody.useGravity = useGravityOnWallRunning;
 
         Vector3 wallNormal = wallRight ? rightWallHit.normal : leftWallHit.normal;
         Vector3 wallForward = Vector3.Cross(wallNormal, transform.up);
@@ -118,13 +159,32 @@ public class WallRunning : MonoBehaviour
         //push player to wall
         if (!(wallLeft && horizontalInput > 0) && !(wallRight && horizontalInput < 0))
             rigidbody.AddForce(-wallNormal * 100.0f, ForceMode.Force);
+
+        //weaken gravity
+        if (useGravityOnWallRunning)
+            rigidbody.AddForce(transform.up * gravityCounterForce, ForceMode.Force);
     }
 
     private void StopWallRun()
     {
         playerMovement.wallRunning = false;
+
+        //reset camera effects
+        playerCamera.DoFov(cameraStartFov);
+        playerCamera.DoTilt(0f);
     }
 
+    private void WallJump()
+    {
+        exitingWall = true;
+        exitWallCounter = exitWallTime;
 
+        Vector3 wallNormal = wallRight ? rightWallHit.normal : leftWallHit.normal;
+        Vector3 forceToApply = transform.up * wallJumpUpForce + wallNormal * wallJumpSideForce;
+
+        rigidbody.velocity = new Vector3(rigidbody.velocity.x, 0f, rigidbody.velocity.z);
+        rigidbody.AddForce(forceToApply, ForceMode.Impulse);
+
+    }
 
 }
